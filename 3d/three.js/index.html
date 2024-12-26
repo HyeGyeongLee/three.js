@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Three.js Rotated Trapezoid Grid</title>
+    <style>
+        .container {
+            position: relative;
+            display: inline-block;
+        }
+        canvas {
+            border: 1px solid black;
+        }
+        .control-point {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: red;
+            border-radius: 50%;
+            cursor: pointer;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+        }
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        let scene, camera, renderer;
+        let gridLines = [];
+        let outlineLines = [];
+        
+        // 그리드 크기 설정
+        const WIDTH = 600;
+        const HEIGHT = 0;
+        
+        const controlPoints = [
+            { x: -WIDTH/4, y: HEIGHT },     // 위쪽 왼
+            { x: WIDTH/4, y: HEIGHT },      // 위쪽 오른
+            { x: -WIDTH/2, y: -200 },          // 아래쪽 왼
+            { x: WIDTH/2, y: -200 }            // 아래쪽 오른
+        ];
+
+        let activePoint = null;
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xffffff);
+
+            camera = new THREE.OrthographicCamera(
+                -300, 300,
+                200, -200,
+                1, 1000
+            );
+            camera.position.z = 100;
+
+            const canvas = document.getElementById('canvas');
+            renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+            renderer.setSize(600, 400);
+
+            // 컨트롤 포인트 DOM 요소 생성
+            const container = document.querySelector('.container');
+            controlPoints.forEach((point, index) => {
+                const div = document.createElement('div');
+                div.className = 'control-point';
+                div.style.left = (point.x + 300) + 'px';
+                div.style.top = (-point.y + 200) + 'px';
+                div.dataset.index = index;
+                container.appendChild(div);
+            });
+
+            container.addEventListener('mousedown', startDragging);
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', stopDragging);
+
+            createGrid();
+            render();
+        }
+
+        function createGrid() {
+            gridLines.forEach(line => scene.remove(line));
+            outlineLines.forEach(line => scene.remove(line));
+            gridLines = [];
+            outlineLines = [];
+
+            const material = new THREE.LineBasicMaterial({ color: 0x000000 });
+
+            // 수직선
+            for (let i = 0; i <= 6; i++) {
+                const ratio = i / 6;
+                const points = [];
+                const topX = lerp(controlPoints[0].x, controlPoints[1].x, ratio);
+                const topY = lerp(controlPoints[0].y, controlPoints[1].y, ratio);
+                const bottomX = lerp(controlPoints[2].x, controlPoints[3].x, ratio);
+                const bottomY = lerp(controlPoints[2].y, controlPoints[3].y, ratio);
+
+                points.push(new THREE.Vector3(bottomX, bottomY, 0));
+                points.push(new THREE.Vector3(topX, topY, 0));
+
+                const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                const line = new THREE.Line(geometry, material);
+                scene.add(line);
+                gridLines.push(line);
+            }
+
+            // 수평선
+            for (let i = 0; i <= 6; i++) {
+                const ratio = i / 6;
+                const points = [];
+                const leftX = lerp(controlPoints[2].x, controlPoints[0].x, ratio);
+                const leftY = lerp(controlPoints[2].y, controlPoints[0].y, ratio);
+                const rightX = lerp(controlPoints[3].x, controlPoints[1].x, ratio);
+                const rightY = lerp(controlPoints[3].y, controlPoints[1].y, ratio);
+
+                points.push(new THREE.Vector3(leftX, leftY, 0));
+                points.push(new THREE.Vector3(rightX, rightY, 0));
+
+                const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                const line = new THREE.Line(geometry, material);
+                scene.add(line);
+                gridLines.push(line);
+            }
+
+            // 외곽선
+            const outlinePoints = [
+                [controlPoints[0], controlPoints[1]], // 위쪽
+                [controlPoints[1], controlPoints[3]], // 오른쪽
+                [controlPoints[3], controlPoints[2]], // 아래쪽
+                [controlPoints[2], controlPoints[0]]  // 왼쪽
+            ];
+
+            outlinePoints.forEach(([start, end]) => {
+                const points = [
+                    new THREE.Vector3(start.x, start.y, 0),
+                    new THREE.Vector3(end.x, end.y, 0)
+                ];
+                const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                const line = new THREE.Line(geometry, material);
+                scene.add(line);
+                outlineLines.push(line);
+            });
+        }
+
+        function lerp(start, end, ratio) {
+            return start + (end - start) * ratio;
+        }
+
+        function startDragging(e) {
+            if (e.target.classList.contains('control-point')) {
+                activePoint = e.target;
+            }
+        }
+
+        function drag(e) {
+            if (activePoint) {
+                const container = document.querySelector('.container');
+                const rect = container.getBoundingClientRect();
+                const x = e.clientX - rect.left - 300;
+                const y = -(e.clientY - rect.top - 200);
+
+                const index = parseInt(activePoint.dataset.index);
+                controlPoints[index].x = x;
+                controlPoints[index].y = y;
+
+                activePoint.style.left = (x + 300) + 'px';
+                activePoint.style.top = (-y + 200) + 'px';
+
+                createGrid();
+                render();
+            }
+        }
+
+        function stopDragging() {
+            activePoint = null;
+        }
+
+        function render() {
+            renderer.render(scene, camera);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

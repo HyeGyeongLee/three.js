@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Uniform Grid Width Trapezoid</title>
+    <style>
+        .container {
+            position: relative;
+            display: inline-block;
+            margin: 0px;
+        }
+        canvas {
+            border: 1px solid black;
+        }
+        .control-point {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: red;
+            border-radius: 50%;
+            cursor: pointer;
+            transform: translate(-50%, -50%);
+        }
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <canvas id="glCanvas" width="600" height="400"></canvas>
+    </div>
+    <script>
+        //사다리꼴의 4개 모서리 위치 선점
+        //x, y좌표로 각 점의 위치를 지정한다.
+        let controlPoints = [
+            { x: 200, y: 200 },  // 왼쪽 위
+            { x: 400, y: 200 },  // 오른쪽 위
+            { x: 0, y: 380 },  // 왼쪽 아래
+            { x: 600, y: 380 }   // 오른쪽 아래
+        ];
+        let activePoint = null;
+        let gl;
+        let program;
+        let outlineBuffer;
+        let gridBuffer;
+
+
+        function initWebGL() {
+            const container = document.querySelector('.container');
+
+            //webGl 컨텍스트 생성
+            //gl 변수에 webGl 컨텍스트 저장
+            const canvas = document.getElementById('glCanvas');
+            gl = canvas.getContext('webgl');
+
+            if (!gl) {
+                alert('WebGL를 초기화할 수 없습니다.');
+                return;
+            }
+
+            // 컨트롤 포인트 생성
+            //각 컨트롤 포인트 마다 div 엘리먼트 생성
+            //위치를 style로 지정
+            //dataset으로 인덱스 정보 저장
+            controlPoints.forEach((point, index) => {
+                const div = document.createElement('div');
+                div.className = 'control-point';
+                div.style.left = point.x + 'px';
+                div.style.top = point.y + 'px';
+                div.dataset.index = index;
+                container.appendChild(div);
+            });
+
+            // 이벤트 리스너 설정
+            container.addEventListener('mousedown', startDragging);
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', stopDragging);
+
+
+            const vsSource = `
+                //각 정점(꼭지점)의 위치정보
+                //uControlPoints[4] : 컨트롤 포인트 배열
+                attribute vec4 aPosition;
+                uniform vec2 uControlPoints[4];
+                
+                //그리드 위치 계산 함수
+                //상단과 하단의 시작, 끝점 정의
+                vec2 calculateGridPosition(float x, float y) {
+                    // 상단과 하단의 시작점과 끝점
+                    vec2 topStart = uControlPoints[0];
+                    vec2 topEnd = uControlPoints[1];
+                    vec2 bottomStart = uControlPoints[2];
+                    vec2 bottomEnd = uControlPoints[3];
+                    
+                    // y 위치에 따른 시작점과 끝점 계산
+                    float yRatio = (y + 1.0) / 2.0;
+                    vec2 left = topStart + (bottomStart - topStart) * yRatio;
+                    vec2 right = topEnd + (bottomEnd - topEnd) * yRatio;
+                    
+                    // 균일한 간격으로 x 위치 계산
+                    vec2 position = left + (right - left) * ((x + 1.0) / 2.0);
+                    
+                    // 캔버스 좌표를 클립 공간으로 변환
+                    return (position / vec2(300.0, 200.0)) - vec2(1.0);
+                }
+
+                void main() {
+                    // calculateGridPosition 함수에서 계산된 2D 위치를 받음
+                    vec2 clipSpace = calculateGridPosition(aPosition.x, aPosition.y);
+
+                    // y좌표를 뒤집음 (WebGL의 좌표계는 아래가 양수이므로 화면 좌표계와 맞추기 위해)
+                    // 사다리꼴을 뒤집어서 나와서 거꾸로 처리하는 부분
+                    clipSpace.y = -clipSpace.y;
+
+                    // vec4(x, y, z, w)로 변환
+                    // z = 0.0 (2D이므로)
+                    // w = 1.0 (원근 나눗셈을 위한 값)
+                    //버텍스 셰이더의 출력 변수
+                    //정점의 최종 위치를 나타냄
+                    //항상 vec4 타입이어야 함
+                    gl_Position = vec4(clipSpace, 0.0, 1.0);
+                }
+            `;
+
+            const fsSource = `
+                precision mediump float;
+                void main() {
+
+                    // vec4(r, g, b, a)로 색상 지정
+                    // r = 0.0, g = 0.0, b = 0.0 (검은색)
+                    // a = 1.0 (완전 불투명)
+                    //프래그먼트 셰이더의 출력 변수
+                    //픽셀의 최종 색상을 나타냄
+                    //RGBA 형식의 vec4 타입
+                    gl_FragColor = vec4(0.3, 0.3, 0.3, 1.0);
+                }
+            `;
+
+            function createShader(gl, type, source) {
+                const shader = gl.createShader(type); //셰이더 객체 생성
+                gl.shaderSource(shader, source); //소스 코드 설정
+                gl.compileShader(shader); //셰이더 컴파일
+
+                //컴파일 에러 체크
+                if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                    console.error('셰이더 컴파일 오류:', gl.getShaderInfoLog(shader));
+                    gl.deleteShader(shader);
+                    return null;
+                }
+                return shader;
+            }
+            
+            const vertexShader = createShader(gl, gl.VERTEX_SHADER, vsSource);
+            const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fsSource);
+
+
+            //프로그램 객체 생성
+            program = gl.createProgram();
+
+            //버텍스 셰이더 연결
+            gl.attachShader(program, vertexShader);
+
+            //프래그먼트 셰이더 연결
+            gl.attachShader(program, fragmentShader);
+
+            //프로그램 링크
+            gl.linkProgram(program);
+
+            createGridAndOutline();
+            draw();
+        }
+
+        function createGridAndOutline() {
+
+            // 그리드 생성
+            const gridVertices = [];
+            const gridSize = 6;  // 5x5 그리드
+
+            // 수직선 생성
+            for (let i = 0; i <= gridSize; i++) {  // 0부터 5까지 = 6개의 선
+                const x = (i / gridSize) * 2 - 1;
+                gridVertices.push(x, -1);
+                gridVertices.push(x, 1);
+            }
+
+            // 수평선 생성도 동일하게
+            for (let i = 0; i <= gridSize; i++) {  // 0부터 5까지 = 6개의 선
+                const y = (i / gridSize) * 2 - 1;  // *4 대신 *2로 변경
+                gridVertices.push(-1, y);
+                gridVertices.push(1, y);
+            }
+
+            // 버퍼 생성 및 데이터 전달
+            gridBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, gridBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(gridVertices), gl.STATIC_DRAW);
+
+            const outlineVertices = [
+                -1, -1,  -1, 1,  // 왼쪽 변
+                -1, 1,   1, 1,   // 위쪽 변
+                1, 1,    1, -1,  // 오른쪽 변
+                1, -1,   -1, -1  // 아래쪽 변
+            ];
+
+            outlineBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, outlineBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(outlineVertices), gl.STATIC_DRAW);
+        }
+
+        function startDragging(e) {
+            // 컨트롤 포인트 클릭 시 활성화
+            if (e.target.classList.contains('control-point')) {
+                activePoint = e.target;
+            }
+        }
+
+        function drag(e) {
+            if (activePoint) {
+                // 마우스 위치 계산
+                const container = document.querySelector('.container');
+                const rect = container.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                // 컨트롤 포인트 위치 업데이트
+                activePoint.style.left = x + 'px';
+                activePoint.style.top = y + 'px';
+                
+                 // 데이터 업데이트
+                const index = parseInt(activePoint.dataset.index);
+                controlPoints[index].x = x;
+                controlPoints[index].y = y;
+                
+                draw();
+            }
+        }
+
+        function stopDragging() {
+            activePoint = null;
+        }
+
+        function draw() {
+             // 뷰포트 설정 및 화면 클리어
+            gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+            // 흰색 배경
+            gl.clearColor(1.0, 1.0, 1.0, 1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+
+            // 셰이더 프로그램 사용
+            gl.useProgram(program);
+
+            // 위치 속성 활성화
+            const positionAttributeLocation = gl.getAttribLocation(program, 'aPosition');
+            gl.enableVertexAttribArray(positionAttributeLocation);
+
+            // 컨트롤 포인트 데이터 전달
+            const controlPointsLocation = gl.getUniformLocation(program, 'uControlPoints');
+            const flattenedPoints = controlPoints.reduce((arr, point) => {
+                arr.push(point.x, point.y);
+                return arr;
+            }, []);
+            gl.uniform2fv(controlPointsLocation, new Float32Array(flattenedPoints));
+
+            // 그리드와 외곽선 그리기
+            gl.bindBuffer(gl.ARRAY_BUFFER, gridBuffer);
+            gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+
+            // 수직선 (7줄):
+
+
+            // 각 선은 2개의 정점 필요 (시작점, 끝점)
+            // 7줄 × 2정점 = 14개 정점
+
+
+            // 수평선 (7줄):
+
+
+            // 각 선은 2개의 정점 필요 (시작점, 끝점)
+            // 7줄 × 2정점 = 14개 정점
+
+
+            // 전체 정점 수:
+
+
+            // 수직선 정점(14) + 수평선 정점(14) = 28개 정점
+            gl.drawArrays(gl.LINES, 0, 28); 
+
+            // 외곽선 그리기
+            gl.bindBuffer(gl.ARRAY_BUFFER, outlineBuffer);
+            gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+
+
+            // const outlineVertices = [
+            //     -1, -1,  -1, 1,   // 왼쪽 변 (2개 정점)
+            //     -1, 1,   1, 1,    // 위쪽 변 (2개 정점)
+            //     1, 1,    1, -1,   // 오른쪽 변 (2개 정점)
+            //     1, -1,   -1, -1   // 아래쪽 변 (2개 정점)
+            // ];
+            // 사다리꼴의 테두리는:
+
+            // 왼쪽 변: 2개 정점
+            // 위쪽 변: 2개 정점
+            // 오른쪽 변: 2개 정점
+            // 아래쪽 변: 2개 정점
+            //여기서 8은 사다리꼴의 외곽선을 그리는데 필요한 정점의 수입니다.
+            gl.drawArrays(gl.LINES, 0, 8);
+        }
+
+        window.onload = initWebGL;
+    </script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>My first three.js app</title>
+		<style>
+            /* margin:0이 없으면, 흰줄이 생김;; */
+			body { margin: 0; }
+			canvas { display: block; }
+		</style>
+	</head>
+	<body>
+		<script type="module">
+			import * as THREE from 'https://cdn.jsdelivr.net/npm/three/build/three.module.js';
+
+            //장면 (무대)
+			const scene = new THREE.Scene();
+
+            //perspectiveCamera 카메라 (fov: Number, aspect:Number, near);
+            //1. 시야각 : 값이 커지면 광각 카메라처럼 멀어짐
+            //2. 종횡비 
+            //3. 0.1 >> 가까이 있는 무대가 줄어듬. 보통은 0.1사용
+            //4. 멀리있는 무대를 줄이고 늘릴수있음.
+			const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+
+
+            //렌더러 : 예를 들어 3d프린터 : 찍어내는 역할을 함.
+			const renderer = new THREE.WebGLRenderer();
+            
+            //장면 사이즈를 지정해서 찍어냄.
+			renderer.setSize( window.innerWidth, window.innerHeight );
+
+            //dom에다가 가져다 붙임.
+			document.body.appendChild( renderer.domElement );
+
+
+            //큐브를 만드는 실제 소스
+            //box geometry 설정
+			const geometry = new THREE.BoxGeometry( 1, 1, 1 );
+
+            //재질 설정
+			const material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
+			const cube = new THREE.Mesh( geometry, material );
+
+            //큐브를 씬에 붙임
+			scene.add( cube );
+
+            //카메라 위치
+			camera.position.z = 5;
+
+
+            //계속 실행~
+            //1초에 60프레임이 돌아가면서 화면을 다시 그려줌
+			function animate() {
+				requestAnimationFrame( animate );
+
+				cube.rotation.x += 0.01;
+				cube.rotation.y += 0.01;
+
+				renderer.render( scene, camera );
+			}
+
+			animate();
+		</script>
+	</body>
+</html>
