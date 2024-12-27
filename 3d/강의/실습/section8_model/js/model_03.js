@@ -71,7 +71,7 @@ const init = () => {
         scene.fog = new THREE.Fog(color, near, far);
     }
 
-    fbxLoadFunc("./model/standing.FBX", "mixamo.com", -2, 0, -20);
+    fbxLoadFunc("./model/standing.FBX", "mixamo.com", -2, 0, -50);
     fbxLoadFunc("./model/DismissingGesture.FBX", "mixamo.com", 12, 0, -300);
 };
 
@@ -160,10 +160,10 @@ const button = document.querySelector("button");
 let moveNum = 0;
 
 button.addEventListener("click", () => {
-    if (camera.position.z == -240) {
+    if (camera.position.z == -250) {
         moveNum = 0;
     } else {
-        moveNum = -240;
+        moveNum = -250;
     }
 
     //트윈맥스 카메라 이동

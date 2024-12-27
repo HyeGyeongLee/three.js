@@ -61,7 +61,21 @@ const init = () => {
 };
 
 const onDocumentMouseMove = (event) => {
+
+    //이 계산을 통해 마우스 위치가 화면 중앙을 기준으로 얼마나 떨어져 있는지를 계산합니다
+
+    // 마우스가 화면 중앙에 있을 때: mouseX와 mouseY는 0
+    // 마우스가 중앙보다 오른쪽에 있을 때: mouseX는 양수
+    // 마우스가 중앙보다 왼쪽에 있을 때: mouseX는 음수
+    // 마우스가 중앙보다 아래에 있을 때: mouseY는 양수
+    // 마우스가 중앙보다 위에 있을 때: mouseY는 음수 
+
+    // 예를 들어, 마우스를 화면 오른쪽으로 움직이면 mouseX가 양수가 되어 박스가 오른쪽으로 회전하고, 왼쪽으로 움직이면 mouseX가 음수가 되어 박스가 왼쪽으로 회전하게 됩니다.
+
+    //event.clientX : 브라우저 창 내에서 마우스의 가로(X축) 위치를 픽셀 단위로 나타냅니다
     mouseX = event.clientX - windowHalfX;
+
+    //event.clientY : 브라우저 창 내에서 마우스의 세로(Y축) 위치를 픽셀 단위로 나타냅니다
     mouseY = event.clientY - windowHalfY;
     // console.log(mouseY);
     // console.log(event.clientX, windowHalfX, mouseX);
@@ -91,7 +105,9 @@ const stageResize = () => {
     WIDTH = window.innerWidth;
     HEIGHT = window.innerHeight;
 
+    //창의 가로 중심점
     windowHalfX = WIDTH / 2;
+    //창의 세로 중심점
     windowHalfY = HEIGHT / 2;
 
     renderer.setSize(WIDTH, HEIGHT);

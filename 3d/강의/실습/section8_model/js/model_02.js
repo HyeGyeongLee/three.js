@@ -79,8 +79,8 @@ const init = () => {
         scene.fog = new THREE.Fog(color, near, far);
     }
 
-    fbxLoadFunc("./model/car.FBX");
-    // fbxLoadFunc("./model/DoughNut_FBX.fbx");
+    // fbxLoadFunc("./model/car.FBX");
+    fbxLoadFunc("./model/DismissingGesture.fbx");
 };
 
 const fbxLoadFunc = (modelName) => {
@@ -98,17 +98,17 @@ const fbxLoadFunc = (modelName) => {
             });
 
             //애니메이션
-            // object.mixer = new THREE.AnimationMixer(object);
-            // mixers.push(object.mixer);
-            // // console.log(mixers.length);
+            object.mixer = new THREE.AnimationMixer(object);
+            mixers.push(object.mixer);
+            // console.log(mixers.length);
 
-            // if (mixers.length > 0) {
-            //     let action = object.mixer.clipAction(object.animations[1]);
-            //     action.play();
-            // }
+            if (mixers.length > 0) {
+                let action = object.mixer.clipAction(object.animations[1]);
+                action.play();
+            }
 
             //크기 조절
-            let scaleNum = 0.6;
+            let scaleNum = 0.5;
             object.scale.set(scaleNum, scaleNum, scaleNum);
 
             model.add(object);
@@ -158,6 +158,7 @@ const scrollFunc = () => {
 
     //회전
     model.rotation.y = scrollTop / 2;
+    model.position.z = scrollTop / 100
 
     // 점점 줌인
     // model.position.z = scrollTop / 40;
