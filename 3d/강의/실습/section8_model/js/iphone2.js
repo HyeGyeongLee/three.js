@@ -14,53 +14,55 @@ let mixers = [];
 const init = () => {
     scene = new THREE.Scene();
     scene.background = new THREE.Color("#eee");
+    
     camera = new THREE.PerspectiveCamera(75, WIDTH / HEIGHT, 0.1, 2000);
-    camera.position.set(200, 0, -300);
+    camera.position.set(0, 0, 500);
+    camera.lookAt(0, 0, 0);
 
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(WIDTH, HEIGHT);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     
-    renderer.physicallyCorrectLights = true;
-    renderer.outputEncoding = THREE.sRGBEncoding;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.0;
+    // 렌더러의 물리적 조명 설정을 비활성화
+    renderer.physicallyCorrectLights = false;
+    renderer.outputEncoding = THREE.LinearEncoding;  // 톤 매핑 변경
+    renderer.toneMapping = THREE.NoToneMapping;      // 톤 매핑 비활성화
 
     document.querySelector("#canvasWrap").appendChild(renderer.domElement);
 
-    controls = new OrbitControls(camera, renderer.domElement);
+    // controls = new OrbitControls(camera, renderer.domElement);
+    // controls.enableDamping = true;
+    // controls.dampingFactor = 0.05;
 
-    const axes = new THREE.AxesHelper(150);
-    scene.add(axes);
+    // const axes = new THREE.AxesHelper(150);
+    // scene.add(axes);
 
-    const gridHelper = new THREE.GridHelper(440, 20);
-    scene.add(gridHelper);
+    // const gridHelper = new THREE.GridHelper(440, 20);
+    // scene.add(gridHelper);
 
-    //바닥
-    const geometry = new THREE.CylinderGeometry(700, 0, 0, 100);
-        const material = new THREE.MeshPhongMaterial({
-            color: 0xeeeeee,
-            transparent: true,  // 투명도 활성화
-            opacity: 0,      // 투명도 설정 (0: 완전 투명, 1: 완전 불투명)
-            shininess: 0,    // 광택
-            side: THREE.DoubleSide  // 양면 렌더링
-        });
-        const boxMesh = new THREE.Mesh(geometry, material);
-        boxMesh.position.set(0, -5, 0);
-        boxMesh.receiveShadow = true;
-        scene.add(boxMesh);
+    // 바닥 - 완전히 투명하고 빛을 반사하지 않도록 설정
+    // const geometry = new THREE.CylinderGeometry(700, 0, 0, 100);
+    // const material = new THREE.MeshBasicMaterial({  // MeshPhongMaterial 대신 MeshBasicMaterial 사용
+    //     transparent: true,
+    //     opacity: 0,
+    //     side: THREE.DoubleSide
+    // });
+    // const boxMesh = new THREE.Mesh(geometry, material);
+    // boxMesh.position.set(0, -5, 0);
+    // boxMesh.receiveShadow = false;  // 그림자 받지 않도록 설정
+    // scene.add(boxMesh);
 
-    initLights();
+    // 안개 설정도 제거하거나 투명하게
     {
         const near = 1000;
         const far = 2000;
-        const color = "#eeeeee";
+        const color = "#ffffff";  // 흰색으로 변경
         scene.fog = new THREE.Fog(color, near, far);
     }
 
-    // Load the model
-    gltfLoadFunc('./model/scene.gltf');
+    initLights();
+    gltfLoadFunc('./model/iphone_16_plus.glb');
 };
 
 const gltfLoadFunc = (modelName) => {
@@ -76,50 +78,13 @@ const gltfLoadFunc = (modelName) => {
                 if (child.isMesh) {
                     child.castShadow = true;
                     child.receiveShadow = true;
-
-                    // material 속성 조정하되 기존 텍스처 유지
-                    if (child.material) {
-                        // 기존 material의 모든 속성을 복사
-                        const originalMaterial = child.material;
-                        
-                        // 새로운 material 생성
-                        const newMaterial = new THREE.MeshStandardMaterial({
-                            map: originalMaterial.map,  // 컬러/디퓨즈 맵
-                            normalMap: originalMaterial.normalMap,  // 노말 맵
-                            roughnessMap: originalMaterial.roughnessMap,  // 거칠기 맵
-                            metalnessMap: originalMaterial.metalnessMap,  // 금속성 맵
-                            aoMap: originalMaterial.aoMap,  // Ambient Occlusion 맵
-                            emissiveMap: originalMaterial.emissiveMap,  // 발광 맵
-                            
-                            color: originalMaterial.color,  // 기본 색상
-                            metalness: 0.5,  // 금속성 (조절 가능)
-                            roughness: 0.5,  // 거칠기 (조절 가능)
-                            envMapIntensity: 1.0,  // 환경맵 강도
-                            
-                            transparent: originalMaterial.transparent,
-                            opacity: originalMaterial.opacity
-                        });
-
-                        // UV2가 있다면 복사
-                        if (child.geometry.attributes.uv2) {
-                            newMaterial.aoMap = originalMaterial.aoMap;
-                            newMaterial.lightMap = originalMaterial.lightMap;
-                        }
-
-                        // material 교체
-                        child.material = newMaterial;
-                        
-                        // 디버깅을 위한 로그
-                        console.log('Original material:', originalMaterial);
-                        console.log('New material:', newMaterial);
-                    }
                 }
             });
 
-            let scaleNum = 20;
+            let scaleNum = 30;
             model.scale.set(scaleNum, scaleNum, scaleNum);
             model.position.set(0, 0, 0);
-            // model.rotation.y = -10
+            model.rotation.y = 10
             scene.add(model);
 
             // 애니메이션이 있는 경우
@@ -148,24 +113,31 @@ const initLights = () => {
     });
 
     // 전체적인 환경광
-    const ambientLight = new THREE.AmbientLight(0xffffff, 12.5);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 6.5);
     scene.add(ambientLight);
 
     // 주 조명 (위에서)
-    const mainLight = new THREE.DirectionalLight(0xffffff, 20);
+    const mainLight = new THREE.DirectionalLight(0xffffff, 1);
     mainLight.position.set(0, 200, 100);
     mainLight.castShadow = true;
     scene.add(mainLight);
 
     // 부드러운 채움광 (전면에서)
-    const fillLight = new THREE.DirectionalLight(0xffffff, 20.5);
+    const fillLight = new THREE.DirectionalLight(0xffffff, 1.5);
     fillLight.position.set(0, 0, 0);
     scene.add(fillLight);
 
     // 뒤에서 비추는 림라이트
-    const rimLight = new THREE.DirectionalLight(0xffffff, 20.3);
-    rimLight.position.set(0, 0, -200);
+    const rimLight = new THREE.DirectionalLight(0xffffff, 1.3);
+    rimLight.position.set(0, 0, 10);
     scene.add(rimLight);
+
+
+    // const sphereSize = 100;
+    // const pointLightHelper = new THREE.PointLightHelper( rimLight, sphereSize );
+    // scene.add( pointLightHelper );
+
+
 };
 
 
@@ -207,10 +179,10 @@ const scrollFunc = () => {
 
     //회전
     model.rotation.y = scrollTop / 2;
-    model.position.z = scrollTop / 100
+    model.position.z = scrollTop / 40
 
     // 점점 줌인
-    // model.position.z = scrollTop / 40;
+    // model.position.z = scrollTop / -70;
 };
 
 window.addEventListener("scroll", scrollFunc);
