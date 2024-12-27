@@ -1,0 +1,11 @@
+Model Information:
+* title:	iPhone 16 Pro White Titanium
+* source:	https://sketchfab.com/3d-models/iphone-16-pro-white-titanium-d4f1ae79c6344e97855b5bd3893b2b12
+* author:	EV_car2013 (https://sketchfab.com/EV_car2013)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "iPhone 16 Pro White Titanium" (https://sketchfab.com/3d-models/iphone-16-pro-white-titanium-d4f1ae79c6344e97855b5bd3893b2b12) by EV_car2013 (https://sketchfab.com/EV_car2013) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
