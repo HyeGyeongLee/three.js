@@ -13,7 +13,7 @@ let mixers = [];
 
 const init = () => {
     scene = new THREE.Scene();
-    scene.background = new THREE.Color("#eee");
+    scene.background = new THREE.Color("#000000");
     
     camera = new THREE.PerspectiveCamera(75, WIDTH / HEIGHT, 0.1, 2000);
     camera.position.set(0, 0, 500);
@@ -54,12 +54,12 @@ const init = () => {
     // scene.add(boxMesh);
 
     // 안개 설정도 제거하거나 투명하게
-    {
-        const near = 1000;
-        const far = 2000;
-        const color = "#ffffff";  // 흰색으로 변경
-        scene.fog = new THREE.Fog(color, near, far);
-    }
+    // {
+    //     const near = 1000;
+    //     const far = 2000;
+    //     const color = "#ffffff";  // 흰색으로 변경
+    //     scene.fog = new THREE.Fog(color, near, far);
+    // }
 
     initLights();
     gltfLoadFunc('./model/iphone_16_plus.glb');
@@ -75,11 +75,29 @@ const gltfLoadFunc = (modelName) => {
             
             // 모델의 모든 메시 순회
             model.traverse((child) => {
-                if (child.isMesh) {
+
+                console.log(child)
+                  if (child.isMesh) {
                     child.castShadow = true;
                     child.receiveShadow = true;
+                    
+                    // 메시 이름에 "screen" 또는 "display"가 포함되어 있다면
+                    // (실제 메시 이름은 모델링 파일에 따라 다를 수 있습니다)
+                    if (child.name.toLowerCase().includes('screen') || 
+                    child.name.toLowerCase().includes('display') ||
+                    child.name.toLowerCase().includes('glass')) {
+                    
+
+                    // 환경 맵 추가로 반사 효과 강화
+                    // const pmremGenerator = new THREE.PMREMGenerator(renderer);
+                    // const envMap = pmremGenerator.fromScene(scene).texture;
+                    // screenMaterial.envMap = envMap;
+                    // screenMaterial.envMapIntensity = 2.0;
+                    
+                    // child.material = screenMaterial;
                 }
-            });
+            }
+        });
 
             let scaleNum = 30;
             model.scale.set(scaleNum, scaleNum, scaleNum);
@@ -107,34 +125,38 @@ const gltfLoadFunc = (modelName) => {
 };
     // init 함수에서 조명 부분 수정
 const initLights = () => {
-    // 기존 조명 모두 제거
     scene.children.forEach(child => {
         if (child.isLight) scene.remove(child);
     });
 
-    // 전체적인 환경광
-    const ambientLight = new THREE.AmbientLight(0xffffff, 6.5);
+    // 부드러운 환경광
+    const ambientLight = new THREE.AmbientLight(0xffffff, 4.0);
     scene.add(ambientLight);
 
-    // 주 조명 (위에서)
-    const mainLight = new THREE.DirectionalLight(0xffffff, 1);
-    mainLight.position.set(0, 200, 100);
-    mainLight.castShadow = true;
-    scene.add(mainLight);
+    // 태양광을 모방한 주 조명
+    const sunLight = new THREE.DirectionalLight(0xffffff, 3.0);
+    sunLight.position.set(0, -5, 10);
+    sunLight.castShadow = true;
+    
+    // 그림자 품질 향상
+    sunLight.shadow.mapSize.width = 2048;
+    sunLight.shadow.mapSize.height = 2048;
+    sunLight.shadow.camera.near = 0.5;
+    sunLight.shadow.camera.far = 500;
+    sunLight.shadow.normalBias = 0.02;
+    
+    scene.add(sunLight);
 
-    // 부드러운 채움광 (전면에서)
-    const fillLight = new THREE.DirectionalLight(0xffffff, 1.5);
-    fillLight.position.set(0, 0, 0);
+    // 부드러운 채움광
+    const fillLight = new THREE.HemisphereLight(
+        0xffffff, // 하늘색
+        0xffffff, // 지면색
+        1.5
+    );
     scene.add(fillLight);
 
-    // 뒤에서 비추는 림라이트
-    const rimLight = new THREE.DirectionalLight(0xffffff, 1.3);
-    rimLight.position.set(0, 0, 10);
-    scene.add(rimLight);
-
-
     // const sphereSize = 100;
-    // const pointLightHelper = new THREE.PointLightHelper( rimLight, sphereSize );
+    // const pointLightHelper = new THREE.PointLightHelper( sunLight, sphereSize );
     // scene.add( pointLightHelper );
 
 
