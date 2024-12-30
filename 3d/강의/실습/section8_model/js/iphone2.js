@@ -179,7 +179,7 @@ const scrollFunc = () => {
 
     //회전
     model.rotation.y = scrollTop / 200;
-    model.position.z = scrollTop / 2
+    model.position.z = scrollTop / 200
 
     // 점점 줌인
     // model.position.z = scrollTop / -70;
